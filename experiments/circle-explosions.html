@@ -1,0 +1,200 @@
+
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Canvas Circle Explosions - The Ramenator</title>
+  <link rel="icon" type="image/png" href="https://cdn1.iconfinder.com/data/icons/cursor-pointers/24/9-512.png" />
+  <style>
+    body{
+    background: #333;
+    }
+    canvas {
+      background: #333;
+      display: block;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      canvas {
+        background: #333;
+        color: white;
+      }
+          body{
+    background: #333;
+    }
+    }
+
+    @media (prefers-color-scheme: light) {
+      canvas {
+        background: #eee;
+        color: black;
+      }
+          body{
+    background: #eee;
+    }
+    }
+  </style>
+</head>
+
+<body>
+  <script>
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    var width = canvas.width = window.innerWidth;
+    var height = canvas.height = window.innerHeight;
+    var speedRange_lcl = localStorage.getItem('speedRange_lcl');
+    if(!localStorage.getItem('speedRange_lcl')){
+        speedRange_lcl = Math.random() * (5 - 0.1) + 0.1;
+    }
+    var avg = (width + height) / 2;
+    var blobs = [];
+    var speedRange = speedRange_lcl;
+    var maxCombo = 15;
+    var radius = 2;
+    var count = avg * 0.5;
+    var PI = Math.PI;
+    var TWOPI = PI * 2;
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+    var random_color_lcl = localStorage.getItem('random_color_lcl');
+    if(!localStorage.getItem('random_color_lcl')){
+        random_color_lcl = Math.random() * (1000 - 5) + 5;
+    }
+    var random_color = random_color_lcl;
+
+    function dist(p1, p2) {
+      var dx = p1.x - p2.x,
+        dy = p1.y - p2.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function Blob() {
+      this.radius = radius;
+      this.targetRadius = radius;
+      this.x = rand(this.radius, width - this.radius);
+      this.y = rand(this.radius, height - this.radius);
+      this.vx = rand(-speedRange, speedRange);
+      this.vy = rand(-speedRange, speedRange);
+      this.hue = 0;
+      this.combineCount = 1;
+      this.deathFlag = 0;
+    }
+    Blob.prototype.update = function(i) {
+      if (this.deathFlag) {
+        blobs.splice(i, 1);
+        return;
+      }
+      if (this.combineCount >= maxCombo) {
+        var j = this.combineCount - 4;
+        while (j--) {
+          var blob = new Blob();
+          blob.x = this.x;
+          blob.y = this.y;
+          blob.vx = rand(-speedRange, speedRange);
+          blob.vy = rand(-speedRange, speedRange);
+          blob.immuneFlag = 50;
+          blobs.push(blob);
+        }
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, TWOPI);
+        ctx.fill();
+        blobs.splice(i, 1);
+        return;
+      }
+      this.index = i;
+      if (this.immuneFlag > 0) {
+        this.immuneFlag--;
+      }
+      this.radius += (this.targetRadius - this.radius) * 0.2;
+      this.x += this.vx;
+      this.y += this.vy;
+      this.hue = random_color + (this.combineCount / maxCombo) * 160;
+      this.wrapBounds();
+      this.checkCollisions();
+    };
+    Blob.prototype.checkCollisions = function() {
+      this.colliding = 0;
+      var i = blobs.length;
+      while (i--) {
+        if (this.index != i) {
+          var other = blobs[i];
+          if (!this.immuneFlag && dist(this, other) <= this.radius + other.radius) {
+            if (this.radius >= other.radius) {
+              this.targetRadius += other.radius;
+              this.combineCount += other.combineCount;
+              other.deathFlag = 1;
+            } else {
+              other.targetRadius += this.radius;
+              other.combineCount += this.combineCount;
+              this.deathFlag = 1;
+            }
+            break;
+          }
+        }
+      }
+    };
+    Blob.prototype.wrapBounds = function() {
+      if (this.x + this.radius < 0) {
+        this.x = width + this.radius;
+      }
+      if (this.x - this.radius > width) {
+        this.x = -this.radius;
+      }
+      if (this.y + this.radius < 0) {
+        this.y = height + this.radius;
+      }
+      if (this.y - this.radius > height) {
+        this.y = -this.radius;
+      }
+    };
+    Blob.prototype.render = function(i) {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, TWOPI);
+      ctx.fillStyle = 'hsl(' + this.hue + ', 100%, 50%)';
+      ctx.fill();
+    };
+
+    function createBlobs() {
+      for (var i = 0; i < count; i++) {
+        blobs.push(new Blob());
+      }
+    }
+
+    function loop() {
+      requestAnimationFrame(loop);
+      ctx.clearRect(0, 0, width, height);
+      var i = blobs.length;
+      while (i--) {
+        blobs[i].update(i);
+      }
+      i = blobs.length;
+      while (i--) {
+        blobs[i].render();
+      }
+    }
+    document.body.appendChild(canvas);
+    createBlobs();
+    loop();
+      document.onkeyup=function(e){
+  var e = e || window.event; // for IE to cover IEs window event-object
+  if(e.altKey && e.which == 65) {
+    alert('This keybind saves your preferences.');
+    localStorage.setItem('speedRange_lcl',speedRange_lcl);
+    localStorage.setItem('random_color_lcl',random_color_lcl);
+  }
+};
+            document.onkeyup=function(e){
+  var e = e || window.event; // for IE to cover IEs window event-object
+  if(e.altKey && e.which == 66) {
+    alert('This keybind deletes your saved preferences.');
+    localStorage.removeItem('speedRange_lcl');
+    localStorage.removeItem('random_color_lcl');
+  }
+};
+  </script>
+</body>
+
+</html>
